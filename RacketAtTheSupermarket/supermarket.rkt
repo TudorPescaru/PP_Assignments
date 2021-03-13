@@ -30,7 +30,7 @@
 ; tt este 0 si coada este vidă.
 ; Obs: la definirea structurii counter se creează automat o funcție make-counter pentru a construi date de acest tip
 (define (empty-counter index)
-  'your-code-here)
+  (make-counter index 0 '()))
 
 
 ; TODO
@@ -38,7 +38,7 @@
 (define (tt+ C minutes)
   (match C
     [(counter index tt queue)
-     'your-code-here]))
+     (struct-copy counter C [tt (+ tt minutes)])]))
 
 
 ; TODO
@@ -47,8 +47,17 @@
 ; - tt-ul acesteia
 ; Obs: când mai multe case au același tt, este preferată casa cu indexul cel mai mic
 (define (min-tt counters)
-  'your-code-here)
+  (cons (counter-index (min-tt-helper (cdr counters) (car counters)))
+        (counter-tt (min-tt-helper (cdr counters) (car counters)))))
 
+(define (min-tt-helper counters res)
+  (cond
+    [(null? counters) res]
+    [(tt-compare (car counters) res) (min-tt-helper (cdr counters) (car counters))]
+    [else (min-tt-helper (cdr counters) res)]))
+
+(define (tt-compare counter1 counter2)
+  (< (counter-tt counter1) (counter-tt counter2)))
 
 ; TODO
 ; Implementați o funcție care adaugă o persoană la o casă.
@@ -56,7 +65,9 @@
 ; Veți întoarce o nouă structură obținută prin așezarea perechii (name . n-items)
 ; la sfârșitul cozii de așteptare.
 (define (add-to-counter C name n-items)
-  'your-code-here)
+  (match C
+    [(counter index tt queue)
+     (tt+ (struct-copy counter C [queue (reverse (cons (cons name n-items) (reverse queue)))]) n-items)]))
 
 
 ; TODO
