@@ -86,8 +86,23 @@
   ; puteți de asemenea să vă definiți funcțiile ajutătoare în exteriorul lui "serve"
   ; - avantaj: puteți să vă testați fiecare funcție imediat ce ați implementat-o
 
+  (define (add-to-best-counter name n-items)
+    (cond
+      [(<= n-items ITEMS) (add-to-counter (min-tt-helper (list C1 C2 C3 C4) C1) name n-items)]
+      [else (add-to-counter (min-tt-helper (list C2 C3 C4) C2) name n-items)]))
+
   (if (null? requests)
       (list C1 C2 C3 C4)
       (match (car requests)
-        [(list 'delay index minutes) 'your-code-here]
-        [(list name n-items)         'your-code-here])))
+        [(list 'delay index minutes) (cond
+                                        [(equal? index 1) (serve (cdr requests) (tt+ C1 minutes) C2 C3 C4)]
+                                        [(equal? index 2) (serve (cdr requests) C1 (tt+ C2 minutes) C3 C4)]
+                                        [(equal? index 3) (serve (cdr requests) C1 C2 (tt+ C3 minutes) C4)]
+                                        [(equal? index 4) (serve (cdr requests) C1 C2 C3 (tt+ C4 minutes))]
+                                        [else (serve (cdr requests) C1 C2 C3 C4)])]
+        [(list name n-items) (match (add-to-best-counter name n-items)
+                               [(counter index _ _) (cond
+                                                      [(equal? index 1) (serve (cdr requests) (add-to-best-counter name n-items) C2 C3 C4)]
+                                                      [(equal? index 2) (serve (cdr requests) C1 (add-to-best-counter name n-items) C3 C4)]
+                                                      [(equal? index 3) (serve (cdr requests) C1 C2 (add-to-best-counter name n-items) C4)]
+                                                      [(equal? index 4) (serve (cdr requests) C1 C2 C3 (add-to-best-counter name n-items))])])])))
