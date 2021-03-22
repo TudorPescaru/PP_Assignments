@@ -49,20 +49,22 @@
 ; cum este cel mai bine ca tt+ să își primească parametrii.
 ; Din acest motiv checker-ul nu testează separat această funcție, dar asistentul va verifica
 ; faptul că ați implementat-o conform cerințelor.
-(define (tt+ minutes)
-  (λ (C) (match C
-           [(counter _ tt _ _)
-            (struct-copy counter C [tt (+ tt minutes)])])))
+(define tt+
+  (λ (minutes)
+    (λ (C) (match C
+             [(counter _ tt _ _)
+              (struct-copy counter C [tt (+ tt minutes)])]))))
 
 
 ; TODO
 ; Implementați o funcție care crește et-ul unei case cu un număr dat de minute.
 ; Păstrați formatul folosit pentru tt+.
 ; Checker-ul nu testează separat această funcție.
-(define (et+ minutes)
-  (λ (C) (match C
-           [(counter _ _ et _)
-            (struct-copy counter C [et (+ et minutes)])])))
+(define et+
+  (λ (minutes)
+    (λ (C) (match C
+             [(counter _ _ et _)
+              (struct-copy counter C [et (+ et minutes)])]))))
 
 
 ; TODO
@@ -70,11 +72,13 @@
 ; Actualizați implementarea add-to-counter pentru aceleași rațiuni pentru care am modificat tt+.
 ; Atenție la cum se modifică tt și et!
 ; Checker-ul nu testează separat această funcție.
-(define (add-to-counter name n-items)
-  (λ (C) (match C
-           [(counter index tt et queue) (cond
-                                          [(zero? (length queue)) (car (update (et+ n-items) (update (tt+ n-items) (list (struct-copy counter C [queue (reverse (cons (cons name n-items) (reverse queue)))])) index) index))]
-                                          [else (car (update (tt+ n-items) (list (struct-copy counter C [queue (reverse (cons (cons name n-items) (reverse queue)))])) index))])])))
+(define add-to-counter
+  (λ (name)
+    (λ (n-items)
+      (λ (C) (match C
+               [(counter index tt et queue) (cond
+                                              [(zero? (length queue)) (car (update (et+ n-items) (update (tt+ n-items) (list (struct-copy counter C [queue (reverse (cons (cons name n-items) (reverse queue)))])) index) index))]
+                                              [else (car (update (tt+ n-items) (list (struct-copy counter C [queue (reverse (cons (cons name n-items) (reverse queue)))])) index))])])))))
 
 
 ; TODO
@@ -85,10 +89,12 @@
 ; - indexul casei (din listă) care are cel mai mic et
 ; - et-ul acesteia
 ; (când mai multe case au același et, este preferată casa cu indexul cel mai mic)
-(define (min f L)
-  (cond
-    [(equal? (length L) 1) (car L)]
-    [else (f (car L) (min f (cdr L)))]))
+(define min
+  (λ (f)
+    (λ (L)
+      (cond
+        [(equal? (length L) 1) (car L)]
+        [else (f (car L) ((min f) (cdr L)))]))))
 
 (define (tt-compare counter1 counter2)
   (cond
@@ -100,13 +106,15 @@
     [(equal? (counter-et counter1) (counter-et counter2)) (if (< (counter-index counter1) (counter-index counter2)) counter1 counter2)]
     [else (if (< (counter-et counter1) (counter-et counter2)) counter1 counter2)]))
 
-(define (min-tt counters)
-  (cons (counter-index (min tt-compare counters))
-        (counter-tt (min tt-compare counters)))) ; folosind funcția de mai sus
+(define min-tt
+  (λ (counters)
+    (cons (counter-index ((min tt-compare) counters))
+          (counter-tt ((min tt-compare) counters))))) ; folosind funcția de mai sus
 
-(define (min-et counters)
-  (cons (counter-index (min et-compare counters))
-        (counter-et (min et-compare counters)))) ; folosind funcția de mai sus
+(define min-et
+  (λ (counters)
+    (cons (counter-index ((min et-compare) counters))
+          (counter-et ((min et-compare) counters))))) ; folosind funcția de mai sus
 
 
 ; TODO
@@ -118,7 +126,9 @@
 (define (remove-first-from-counter C)
   (struct-copy counter C
                [tt (foldl (λ (x acc) (+ acc (cdr x))) 0 (cdr (counter-queue C)))]
-               [et (cond [(null? (cdr (counter-queue C))) 0] [else (cdr (car (cdr (counter-queue C))))])]
+               [et (cond
+                     [(null? (cdr (counter-queue C))) 0]
+                     [else (cdr (car (cdr (counter-queue C))))])]
                [queue (cdr (counter-queue C))]))
 
 ; TODO
@@ -154,9 +164,9 @@
   (define (add-to-best-counter name n-items)
     (cond
       [(<= n-items ITEMS) (if (<= (cdr (min-tt fast-counters)) (cdr (min-tt slow-counters)))
-                              (cons (update (add-to-counter name n-items) fast-counters (car (min-tt fast-counters))) slow-counters)
-                              (cons fast-counters (update (add-to-counter name n-items) slow-counters (car (min-tt slow-counters)))))]
-      [else (cons fast-counters (update (add-to-counter name n-items) slow-counters (car (min-tt slow-counters))))]))
+                              (cons (update ((add-to-counter name) n-items) fast-counters (car (min-tt fast-counters))) slow-counters)
+                              (cons fast-counters (update ((add-to-counter name) n-items) slow-counters (car (min-tt slow-counters)))))]
+      [else (cons fast-counters (update ((add-to-counter name) n-items) slow-counters (car (min-tt slow-counters))))]))
 
   (define (apply-delay index minutes)
     (cons (update (tt+ minutes) (update (et+ minutes) fast-counters index) index) (update (tt+ minutes) (update (et+ minutes) slow-counters index) index)))
@@ -168,8 +178,8 @@
     (cond
       [(and (null? fast) (null? slow)) (cons fast-counters slow-counters)]
       [(and (not (null? fast)) (not (null? slow))) (if (<= (cdr (min-et fast)) (cdr (min-et slow)))
-                                                 (cons (update remove-first-from-counter fast-counters (car (min-et fast))) slow-counters)
-                                                 (cons fast-counters (update remove-first-from-counter slow-counters (car (min-et slow)))))]
+                                                       (cons (update remove-first-from-counter fast-counters (car (min-et fast))) slow-counters)
+                                                       (cons fast-counters (update remove-first-from-counter slow-counters (car (min-et slow)))))]
       [else (if (null? slow)
                 (cons (update remove-first-from-counter fast-counters (car (min-et fast))) slow-counters)
                 (cons fast-counters (update remove-first-from-counter slow-counters (car (min-et slow)))))]))
