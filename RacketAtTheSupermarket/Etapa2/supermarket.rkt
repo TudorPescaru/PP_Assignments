@@ -124,12 +124,14 @@
 ; Atenție la cum se modifică tt și et!
 ; Dacă o casă tocmai a fost părăsită de cineva, înseamnă că ea nu mai are întârzieri.
 (define (remove-first-from-counter C)
-  (struct-copy counter C
-               [tt (foldl (λ (x acc) (+ acc (cdr x))) 0 (cdr (counter-queue C)))]
-               [et (cond
-                     [(null? (cdr (counter-queue C))) 0]
-                     [else (cdr (car (cdr (counter-queue C))))])]
-               [queue (cdr (counter-queue C))]))
+  (match C
+    [(counter _ _ _ queue)
+     (struct-copy counter C
+                  [tt (foldl (λ (x acc) (+ acc (cdr x))) 0 (cdr queue))]
+                  [et (cond
+                        [(null? (cdr queue)) 0]
+                        [else (cdr (car (cdr queue)))])]
+                  [queue (cdr queue)])]))
 
 ; TODO
 ; Implementați funcția care simulează fluxul clienților pe la case.
