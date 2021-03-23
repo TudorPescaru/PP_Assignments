@@ -51,20 +51,22 @@
 ; TODO
 ; Definiți valoarea care reprezintă o structură queue goală.
 (define empty-queue
-  'your-code-here)
+  (make-queue '() '() 0 0))
 
 
 ; TODO
 ; Implementați o funcție care verifică dacă o coadă este goală.
 (define (queue-empty? q)
-  'your-code-here)
+  (and (zero? (queue-size-l q)) (zero? (queue-size-r q))))
 
 
 ; TODO
 ; Implementați o funcție care adaugă un element la sfârșitul unei cozi.
 ; Veți întoarce coada actualizată.
 (define (enqueue x q)
-  'your-code-here)
+  (match q
+    [(queue _ right _ size-r)
+     (struct-copy queue q [right (cons x right)] [size-r (+ size-r 1)])]))
 
 
 ; TODO
@@ -72,7 +74,22 @@
 ; (nu verificați că e nevidă, pe coada vidă este firesc să dea eroare).
 ; Veți întoarce coada actualizată.
 (define (dequeue q)
-  'your-code-here)
+
+  (define (remove-first-from-left q)
+    (match q
+      [(queue left _ size-l _)
+       (struct-copy queue q [left (cdr left)] [size-l (- size-l 1)])]))
+  
+  (cond
+    [(zero? (queue-size-l q)) (remove-first-from-left (transfer-right-left q))]
+    [else (remove-first-from-left q)]))
+
+(define (transfer-right-left q)
+  (cond
+    [(zero? (queue-size-r q)) q]
+    [else (transfer-right-left (match q
+                                 [(queue left right size-l size-r)
+                                  (struct-copy queue q [left (cons (car right) left)] [right (cdr right)] [size-l (+ size-l 1)] [size-r (- size-r 1)])]))]))
 
 
 ; TODO
@@ -80,4 +97,6 @@
 ; (nu verificați că e nevidă, pe coada vidă este firesc să dea eroare).
 ; Veți întoarce elementul aflat la începutul cozii.
 (define (top q)
-  'your-code-here)
+  (cond
+    [(zero? (queue-size-l q)) (car (queue-left (transfer-right-left q)))]
+    [else (car (queue-left q))]))

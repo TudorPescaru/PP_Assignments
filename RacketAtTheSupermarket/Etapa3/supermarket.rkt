@@ -33,28 +33,77 @@
 ; - top
 ; Obs: Doar câteva funcții vor necesita actualizări.
 (define (empty-counter index)           ; testată de checker
-  'your-code-here)
+  (make-counter index 0 0 empty-queue))
 
 (define (update f counters index)
-  'your-code-here)
+  (update-helper f counters index '()))
+
+(define (update-helper f counters index updated-counters)
+  (cond
+    [(null? counters) (reverse updated-counters)]
+    [(equal? (counter-index (car counters)) index) (update-helper f (cdr counters) index (cons (f (car counters)) updated-counters))]
+    [else (update-helper f (cdr counters) index (cons (car counters) updated-counters))]))
 
 (define tt+
-  'your-code-here)
+  (λ (minutes)
+    (λ (C) (match C
+             [(counter _ tt _ _)
+              (struct-copy counter C [tt (+ tt minutes)])]))))
 
 (define et+
-  'your-code-here)
+  (λ (minutes)
+    (λ (C) (match C
+             [(counter _ _ et _)
+              (struct-copy counter C [et (+ et minutes)])]))))
 
 (define (add-to-counter name items)     ; testată de checker
   (λ (C)                                ; nu modificați felul în care funcția își primește argumentele
-    'your-code-here))
+    (match C
+      [(counter index tt et queue) (cond
+                                     [(queue-empty? queue) (car (update (et+ items) (update (tt+ items) (list (struct-copy counter C [queue (enqueue (cons name items) queue)])) index) index))]
+                                     [else (car (update (tt+ items) (list (struct-copy counter C [queue (enqueue (cons name items) queue)])) index))])])))
 
-(define functie-mai-abstracta-careia-ii-veti-da-un-nume-sugestiv
-  'your-code-here)
-(define min-tt 'your-code-here)
-(define min-et 'your-code-here)
+(define min
+  (λ (f)
+    (λ (L)
+      (cond
+        [(equal? (length L) 1) (car L)]
+        [else (f (car L) ((min f) (cdr L)))]))))
+
+(define (tt-compare counter1 counter2)
+  (cond
+    [(equal? (counter-tt counter1) (counter-tt counter2)) (if (< (counter-index counter1) (counter-index counter2)) counter1 counter2)]
+    [else (if (< (counter-tt counter1) (counter-tt counter2)) counter1 counter2)]))
+
+(define (et-compare counter1 counter2)
+  (cond
+    [(equal? (counter-et counter1) (counter-et counter2)) (if (< (counter-index counter1) (counter-index counter2)) counter1 counter2)]
+    [else (if (< (counter-et counter1) (counter-et counter2)) counter1 counter2)]))
+
+(define min-tt
+  (λ (counters)
+    (cons (counter-index ((min tt-compare) counters))
+          (counter-tt ((min tt-compare) counters)))))
+
+(define min-et
+  (λ (counters)
+    (cons (counter-index ((min et-compare) counters))
+          (counter-et ((min et-compare) counters)))))
 
 (define (remove-first-from-counter C)   ; testată de checker
-  'your-code-here)
+  (match C
+    [(counter _ _ _ queue)
+     (struct-copy counter C
+                  [tt (sum-queue (dequeue queue) 0)]
+                  [et (cond
+                        [(queue-empty? (dequeue queue)) 0]
+                        [else (cdr (top (dequeue queue)))])]
+                  [queue (dequeue queue)])]))
+
+(define (sum-queue q acc)
+  (cond
+    [(queue-empty? q) acc]
+    [else (sum-queue (dequeue q) (+ acc (cdr (top q))))]))
 
 
 ; TODO
@@ -66,7 +115,11 @@
 ; Atenție: casele fără clienți nu trebuie să ajungă la timpi negativi!
 (define (pass-time-through-counter minutes)
   (λ (C)
-    'your-code-here))
+    (match C
+      [(counter _ tt et queue)
+       (cond
+         [(queue-empty? queue) (struct-copy counter C [tt (max (- tt minutes) 0)] [et (max (- et minutes) 0)])]
+         [else (struct-copy counter C [tt (- tt minutes)] [et (- et minutes)])])])))
   
 
 ; TODO
@@ -99,5 +152,84 @@
 ; Obs: Pentru a contoriza ieșirile din cozi, puteți să lucrați într-o funcție ajutătoare
 ; (cu un parametru în plus față de funcția serve), pe care serve doar o apelează.
 (define (serve requests fast-counters slow-counters)
-  'your-code-here)
+  (serve-helper requests fast-counters slow-counters '()))
+
+(define (serve-helper requests fast-counters slow-counters clients)
+  
+  (define (add-to-best-counter name n-items)
+    (cond
+      [(<= n-items ITEMS) (if (<= (cdr (min-tt fast-counters)) (cdr (min-tt slow-counters)))
+                              (cons (update (add-to-counter name n-items) fast-counters (car (min-tt fast-counters))) slow-counters)
+                              (cons fast-counters (update (add-to-counter name n-items) slow-counters (car (min-tt slow-counters)))))]
+      [else (cons fast-counters (update (add-to-counter name n-items) slow-counters (car (min-tt slow-counters))))]))
+
+  (define (apply-delay index minutes)
+    (cons (update (tt+ minutes) (update (et+ minutes) fast-counters index) index) (update (tt+ minutes) (update (et+ minutes) slow-counters index) index)))
+
+  (define (calculate-ttmed counters)
+    (/ (foldr (λ (C acc) (+ acc (counter-tt C))) 0 counters) (length counters)))
+
+  (define (add-slow slow average)
+    (cond
+      [(<= (calculate-ttmed (append fast-counters slow)) average) slow]
+      [else (add-slow (append slow (list (empty-counter (+ (counter-index (car (reverse slow))) 1)))) average)]))
+
+  (define (counters-to-remove-from counters indexes)
+    (cond
+      [(null? counters) (reverse indexes)]
+      [(match (car counters)
+         [(counter index tt et queue) (and (zero? et) (not (queue-empty? queue)))])
+       (counters-to-remove-from (cdr counters) (cons (counter-index (car counters)) indexes))]
+      [else (counters-to-remove-from (cdr counters) indexes)]))
+
+  (define (customer-to-remove counters index)
+    (cond
+      [(equal? (counter-index (car counters)) index) (cons index (car (top (counter-queue (car counters)))))]
+      [else (customer-to-remove (cdr counters) index)]))
+
+  (define (remove-from-counters fast slow cl indexes)
+    (cond
+      [(null? indexes) (list fast slow cl)]
+      [else (remove-from-counters (update remove-first-from-counter fast (car indexes))
+                                  (update remove-first-from-counter slow (car indexes))
+                                  (cons (customer-to-remove (append fast slow) (car indexes)) cl)
+                                  (cdr indexes))]))
+
+  (define (pass-time x fast slow cl)
+    (remove-from-counters (map (pass-time-through-counter x) fast)
+                          (map (pass-time-through-counter x) slow)
+                          cl
+                          (counters-to-remove-from (append (map (pass-time-through-counter x) fast) (map (pass-time-through-counter x) slow)) '())))
+
+  (define (counters-with-customers L)
+    (filter (λ (C) (not (queue-empty? (counter-queue C)))) L))
+
+  (define (min-et-or-0 counters)
+    (cond
+      [(null? counters) 0]
+      [else (cdr (min-et counters))]))
+  
+  (define (pass-total-time x fast slow cl)
+    (cond
+      [(zero? x) (list fast slow cl)]
+      [(zero? (min-et-or-0 (counters-with-customers (append fast slow)))) (pass-time x fast slow cl)]
+      [(< x (min-et-or-0 (counters-with-customers (append fast slow)))) (pass-total-time (- x x)
+                                                                                         (car (pass-time x fast slow cl))
+                                                                                         (cadr (pass-time x fast slow cl))
+                                                                                         (caddr (pass-time x fast slow cl)))]
+      [else (pass-total-time (- x (min-et-or-0 (counters-with-customers (append fast slow))))
+                             (car (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl))
+                             (cadr (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl))
+                             (caddr (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl)))]))
+  
+  (if (null? requests)
+      (cons (reverse clients) (append fast-counters slow-counters))
+      (match (car requests)
+        [(list 'ensure average) (serve-helper (cdr requests) fast-counters (add-slow slow-counters average) clients)]
+        [(list name n-items) (serve-helper (cdr requests) (car (add-to-best-counter name n-items)) (cdr (add-to-best-counter name n-items)) clients)]
+        [(list 'delay index minutes) (serve-helper (cdr requests) (car (apply-delay index minutes)) (cdr (apply-delay index minutes)) clients)]
+        [x (serve-helper (cdr requests)
+                         (car (pass-total-time x fast-counters slow-counters clients))
+                         (cadr (pass-total-time x fast-counters slow-counters clients))
+                         (caddr (pass-total-time x fast-counters slow-counters clients)))])))
         
