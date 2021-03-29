@@ -196,10 +196,8 @@
                                   (cdr indexes))]))
 
   (define (pass-time x fast slow cl)
-    (remove-from-counters (map (pass-time-through-counter x) fast)
-                          (map (pass-time-through-counter x) slow)
-                          cl
-                          (counters-to-remove-from (append (map (pass-time-through-counter x) fast) (map (pass-time-through-counter x) slow)) '())))
+    (let ([new-fast (map (pass-time-through-counter x) fast)] [new-slow (map (pass-time-through-counter x) slow)])
+      (remove-from-counters new-fast new-slow cl (counters-to-remove-from (append new-fast new-slow) '()))))
 
   (define (counters-with-customers L)
     (filter (λ (C) (not (queue-empty? (counter-queue C)))) L))
@@ -213,23 +211,16 @@
     (cond
       [(zero? x) (list fast slow cl)]
       [(zero? (min-et-or-0 (counters-with-customers (append fast slow)))) (pass-time x fast slow cl)]
-      [(< x (min-et-or-0 (counters-with-customers (append fast slow)))) (pass-total-time (- x x)
-                                                                                         (car (pass-time x fast slow cl))
-                                                                                         (cadr (pass-time x fast slow cl))
-                                                                                         (caddr (pass-time x fast slow cl)))]
-      [else (pass-total-time (- x (min-et-or-0 (counters-with-customers (append fast slow))))
-                             (car (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl))
-                             (cadr (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl))
-                             (caddr (pass-time (min-et-or-0 (counters-with-customers (append fast slow))) fast slow cl)))]))
+      [(< x (min-et-or-0 (counters-with-customers (append fast slow)))) (let ([res (pass-time x fast slow cl)])
+                                                                          (pass-total-time (- x x) (car res) (cadr res) (caddr res)))]
+      [else (let* ([new-x (min-et-or-0 (counters-with-customers (append fast slow)))] [res (pass-time new-x fast slow cl)])
+              (pass-total-time (- x new-x) (car res) (cadr res) (caddr res)))]))
   
   (if (null? requests)
       (cons (reverse clients) (append fast-counters slow-counters))
       (match (car requests)
         [(list 'ensure average) (serve-helper (cdr requests) fast-counters (add-slow slow-counters average) clients)]
-        [(list name n-items) (serve-helper (cdr requests) (car (add-to-best-counter name n-items)) (cdr (add-to-best-counter name n-items)) clients)]
-        [(list 'delay index minutes) (serve-helper (cdr requests) (car (apply-delay index minutes)) (cdr (apply-delay index minutes)) clients)]
-        [x (serve-helper (cdr requests)
-                         (car (pass-total-time x fast-counters slow-counters clients))
-                         (cadr (pass-total-time x fast-counters slow-counters clients))
-                         (caddr (pass-total-time x fast-counters slow-counters clients)))])))
+        [(list name n-items) (let ([res (add-to-best-counter name n-items)]) (serve-helper (cdr requests) (car res) (cdr res) clients))]
+        [(list 'delay index minutes) (let ([res (apply-delay index minutes)]) (serve-helper (cdr requests) (car res) (cdr res) clients))]
+        [x (let ([res (pass-total-time x fast-counters slow-counters clients)]) (serve-helper (cdr requests) (car res) (cadr res) (caddr res)))])))
         
