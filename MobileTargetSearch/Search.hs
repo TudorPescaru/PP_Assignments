@@ -167,11 +167,7 @@ astar' visited frontier = goalNode
 -}
 
 astar :: (ProblemState s a, Ord s) => Node s a -> Node s a
-astar initialNode = goalNode
-    where
-        goalNode = astar' initialVisited initialFrontier
-        initialVisited = S.insert (nodeState initialNode) S.empty
-        initialFrontier = insertSucc (insertSuccs initialNode PQ.empty initialVisited) initialNode
+astar initialNode = astar' S.empty $ insertSucc PQ.empty initialNode
 
 {-
     *** TODO ***
