@@ -485,12 +485,7 @@ instance ProblemState Game Direction where
         Generează succesorii stării curente a jocului.
         Utilizați advanceGameState, cu parametrul Bool ales corespunzător.
     -}
-    successors game = [succNorth, succSouth, succEast, succWest]
-        where
-            succNorth = (North, advanceGameState North False game)
-            succSouth = (South, advanceGameState South False game)
-            succEast = (East, advanceGameState East False game)
-            succWest = (West, advanceGameState West False game)
+    successors game = map (\ dir -> (dir, advanceGameState dir False game)) [North, South, East, West]
 
     {-
         *** TODO ***
@@ -554,12 +549,7 @@ instance ProblemState BonusGame Direction where
         Hint: Puteți să folosiți funcția fmap pe perechi pentru acest lucru.
         https://wiki.haskell.org/Functor
     -}
-    successors (BonusGame game) = [succNorth, succSouth, succEast, succWest]
-        where
-            succNorth = fmap BonusGame (North, advanceGameState North False game)
-            succSouth = fmap BonusGame (South, advanceGameState South False game)
-            succEast = fmap BonusGame (East, advanceGameState East False game)
-            succWest = fmap BonusGame (West, advanceGameState West False game)
+    successors (BonusGame game) = map (\ dir -> fmap BonusGame (dir, advanceGameState dir False game)) [North, South, East, West]
 
     {-
         *** BONUS TODO ***
